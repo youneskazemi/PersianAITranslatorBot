@@ -5,3 +5,5 @@ venv/*
 __pycache__/*
 .env
 tempfiles/
+
+__init__.py

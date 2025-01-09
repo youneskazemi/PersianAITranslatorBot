@@ -35,7 +35,23 @@ MEDIA_GROUP_TIMEOUT = (
 )  # seconds to wait before processing media group
 
 
-# bot.py
+def is_authorized(message) -> bool:
+    """
+    Check if the message is from an authorized source (allowed user, channel, or group).
+    """
+    chat_id = message.chat.id
+    user_id = message.from_user.id if message.from_user else None
+    chat_type = message.chat.type
+
+    # Check based on chat type
+    if chat_type == "channel":
+        return chat_id in settings.ALLOWED_CHANNELS
+    elif chat_type in ["group", "supergroup"]:
+        return chat_id in settings.ALLOWED_GROUPS
+    elif chat_type == "private":
+        return user_id in settings.ALLOWED_USERS
+
+    return False
 
 
 async def send_long_message(
@@ -46,11 +62,6 @@ async def send_long_message(
 ):
     """
     Sends a long message by splitting it into chunks if necessary.
-
-    :param context: The context from the handler.
-    :param chat_id: The ID of the chat to send the message to.
-    :param text: The message text to send.
-    :param reply_to_message_id: (Optional) The message ID to reply to.
     """
     chunks = split_message(text, max_length=4096)
 
@@ -60,13 +71,11 @@ async def send_long_message(
                 chat_id=chat_id,
                 text=chunk,
                 reply_to_message_id=reply_to_message_id,
-                parse_mode="HTML",  # Adjust as needed
+                parse_mode="HTML",
             )
-            # Optional: Add a short delay to respect rate limits
             await asyncio.sleep(0.1)
         except Exception as e:
             logger.error(f"Failed to send message chunk: {e}")
-            # Optionally, implement retry logic here
 
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -75,6 +84,12 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
     try:
         message = update.effective_message
+
+        # Check authorization
+        if not is_authorized(message):
+            logger.warning(f"Unauthorized access attempt from chat {message.chat.id}")
+            return  # Silently ignore unauthorized messages
+
         chat_id = message.chat.id
 
         # Check if the message is part of a media group
@@ -166,7 +181,6 @@ async def process_media_group(media_group_id: str, context: ContextTypes.DEFAULT
                 caption=translated_caption if translated_caption else None,
             )
         elif msg.voice:
-
             voice = msg.voice
             transcription = "متن"
 
