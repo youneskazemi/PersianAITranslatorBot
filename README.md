@@ -30,12 +30,7 @@ A Telegram bot that specializes in translating financial market texts from any l
 
 ## Setup
 
-1. Clone the repository:
-
-```bash
-git clone [repository-url]
-cd [repository-name]
-```
+1. Clone the repository
 
 2. Install dependencies:
 
