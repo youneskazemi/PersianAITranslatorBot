@@ -3,6 +3,7 @@
 import os
 import logging
 import asyncio
+import re
 from io import BytesIO
 from moviepy.video.io.VideoFileClip import VideoFileClip
 
@@ -19,7 +20,12 @@ from telegram.ext import (
     MessageHandler,
     filters,
 )
-from utils import translate_text, transcribe_audio, split_message
+from utils import (
+    translate_text,
+    transcribe_audio,
+    split_message,
+    download_youtube_audio,
+)
 import settings
 
 # Configure logging
@@ -33,6 +39,14 @@ media_groups = {}
 MEDIA_GROUP_TIMEOUT = (
     settings.MEDIA_GROUP_TIMEOUT
 )  # seconds to wait before processing media group
+
+
+def is_youtube_url(text: str) -> bool:
+    """Check if the given text contains a YouTube URL."""
+    youtube_regex = (
+        r"(https?://)?(www\.)?(youtube\.com/watch\?v=|youtu\.be/)[a-zA-Z0-9_-]+"
+    )
+    return bool(re.search(youtube_regex, text))
 
 
 def is_authorized(message) -> bool:
@@ -393,14 +407,35 @@ async def handle_single_message(message, context: ContextTypes.DEFAULT_TYPE):
     elif message.text:
         original_text = message.text
         try:
-            translated_text = await translate_text(original_text)
-            if translated_text:
-                await context.bot.send_message(
+            # Check if the message contains a YouTube URL
+            if is_youtube_url(original_text):
+
+                # Download YouTube audio
+                audio_bytes = await download_youtube_audio(original_text)
+
+                # Transcribe the audio
+                transcription = await transcribe_audio(audio_bytes)
+
+                # Translate the transcription
+                translated_text = await translate_text(transcription)
+
+                # Send the translated text
+                await send_long_message(
+                    context=context,
                     chat_id=chat_id,
                     text=translated_text,
                     reply_to_message_id=message.message_id,
                 )
-                logger.info(f"Sent translated text to chat {chat_id}.")
+                logger.info(f"Processed YouTube video for chat {chat_id}")
+            else:
+                translated_text = await translate_text(original_text)
+                if translated_text:
+                    await context.bot.send_message(
+                        chat_id=chat_id,
+                        text=translated_text,
+                        reply_to_message_id=message.message_id,
+                    )
+                    logger.info(f"Sent translated text to chat {chat_id}.")
         except Exception as e:
             logger.error(f"Failed to translate/send text: {e}")
             await context.bot.send_message(

@@ -1,4 +1,6 @@
 from io import BytesIO
+import os
+import yt_dlp
 from openai import OpenAI, AsyncOpenAI
 import settings
 
@@ -6,6 +8,45 @@ import settings
 client = AsyncOpenAI(
     api_key=settings.OPENAI_API_KEY,
 )
+
+
+async def download_youtube_audio(url: str) -> BytesIO:
+    """
+    Downloads audio from a YouTube video and returns it as BytesIO object.
+    """
+    try:
+        if not os.path.exists("./tempfiles"):
+            os.makedirs("./tempfiles")
+
+        ydl_opts = {
+            "format": "bestaudio/best",
+            "postprocessors": [
+                {
+                    "key": "FFmpegExtractAudio",
+                    "preferredcodec": "mp3",
+                    "preferredquality": "192",
+                }
+            ],
+            "outtmpl": "./tempfiles/%(id)s.%(ext)s",
+        }
+
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(url, download=True)
+            video_id = info["id"]
+            audio_path = f"./tempfiles/{video_id}.mp3"
+
+            # Read the audio file into BytesIO
+            with open(audio_path, "rb") as f:
+                audio_bytes = BytesIO(f.read())
+                audio_bytes.name = f"{video_id}.mp3"
+
+            # Clean up the temporary file
+            os.remove(audio_path)
+
+            return audio_bytes
+    except Exception as e:
+        print(f"Error downloading YouTube audio: {e}")
+        raise
 
 
 async def translate_text(text: str) -> str:
@@ -46,9 +87,6 @@ async def transcribe_audio(audio_file: BytesIO) -> str:
     except Exception as e:
         print(e)
         return "Failed to transcribe the audio."
-
-
-# utils.py
 
 
 def split_message(message, max_length=4096):
