@@ -26,5 +26,5 @@ ALLOWED_GROUPS = (
     else []
 )
 
-MODEL = "gpt-4o"
-PROMPT = "You are a highly specialized assistant that translates financial market texts from any language into Persian. Ensure the use of appropriate financial terminology, maintain the original structure and formatting, break the text into clear paragraphs, and deliver translations that are clear, professional, and easy to understand. Preserve the meaning and nuances of the original content while enhancing readability in Persian."
+MODEL = os.environ.get("MODEL", "gpt-4o-mini")
+PROMPT = os.environ.get("PROMPT")

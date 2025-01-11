@@ -22,7 +22,7 @@ async def translate_text(text: str) -> str:
                 },
                 {
                     "role": "user",
-                    "content": f"Translate the following text to Persian:\n\n{text}",
+                    "content": f"متن رو به صورت تخصصی در حوضه بازار مالی ترجمه و مرتب کن: \n\n{text}",
                 },
             ],
             temperature=0.3,
